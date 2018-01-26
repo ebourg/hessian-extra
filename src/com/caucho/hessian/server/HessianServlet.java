@@ -54,6 +54,9 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.logging.Logger;
+import java.util.zip.Deflater;
+import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPOutputStream;
 
 import javax.servlet.GenericServlet;
 import javax.servlet.Servlet;
@@ -396,13 +399,18 @@ public class HessianServlet extends HttpServlet {
 
     try {
       InputStream is = request.getInputStream();
-      OutputStream os = response.getOutputStream();
+      OutputStream os = getOutputStream(req, res);
 
       response.setContentType("x-application/hessian");
 
       SerializerFactory serializerFactory = getSerializerFactory();
 
       invoke(is, os, objectId, serializerFactory);
+      
+      if (os instanceof DeflaterOutputStream)
+      {
+          ((DeflaterOutputStream) os).finish();
+      }
     } catch (RuntimeException e) {
       throw e;
     } catch (ServletException e) {
@@ -414,6 +422,29 @@ public class HessianServlet extends HttpServlet {
     }
   }
   
+  protected OutputStream getOutputStream(HttpServletRequest req, HttpServletResponse res) throws IOException
+  {
+    OutputStream os = res.getOutputStream();
+
+    // compression de la réponse
+    String acceptEncoding = req.getHeader("Accept-Encoding");
+    if (acceptEncoding != null)
+    {
+      if (acceptEncoding.contains("deflate"))
+      {
+        res.setHeader("Content-Encoding", "deflate");
+        os = new DeflaterOutputStream(os, new Deflater(Deflater.DEFAULT_COMPRESSION, true));
+      }
+      else if (acceptEncoding.contains("gzip"))
+      {
+        res.setHeader("Content-Encoding", "gzip");
+        os = new GZIPOutputStream(os);
+      }
+    }
+
+    return os;
+  }
+
   protected void invoke(InputStream is, OutputStream os,
                         String objectId,
                         SerializerFactory serializerFactory)
