@@ -52,11 +52,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.PushbackInputStream;
 import java.io.Writer;
 import java.util.logging.Logger;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
 import javax.servlet.GenericServlet;
 import javax.servlet.Servlet;
@@ -401,7 +405,7 @@ public class HessianServlet extends HttpServlet {
     ServiceContext.begin(req, res, serviceId, objectId);
 
     try {
-      InputStream is = request.getInputStream();
+      InputStream is = getInputStream(req);
       OutputStream os = getOutputStream(req, res);
 
       response.setContentType("x-application/hessian");
@@ -425,6 +429,41 @@ public class HessianServlet extends HttpServlet {
     }
   }
   
+  protected InputStream getInputStream(HttpServletRequest request) throws IOException
+  {
+    InputStream is = request.getInputStream();
+
+    // request decompression
+    String contentEncoding = request.getHeader("Content-Encoding");
+    if ("gzip".equals(contentEncoding))
+    {
+      return new GZIPInputStream(is);
+    }
+    else if ("deflate".equals(contentEncoding))
+    {
+      return new InflaterInputStream(is, new Inflater(true));
+    }
+    else
+    {
+      // auto detection of gzip compression
+      byte[] header = new byte[2];
+      PushbackInputStream pis = new PushbackInputStream(is, header.length);
+      pis.read(header);
+      pis.unread(header);
+
+      int magic = ((header[1] & 0xff) << 8) + (header[0] & 0xff);
+
+      if (GZIPInputStream.GZIP_MAGIC == magic)
+      {
+        return new GZIPInputStream(pis);
+      }
+      else
+      {
+        return pis;
+      }
+    }
+  }
+
   protected OutputStream getOutputStream(HttpServletRequest req, HttpServletResponse res) throws IOException
   {
     OutputStream os = res.getOutputStream();

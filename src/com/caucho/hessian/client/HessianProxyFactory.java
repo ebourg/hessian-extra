@@ -140,6 +140,7 @@ public class HessianProxyFactory implements ServiceProxyFactory, ObjectFactory {
 
   private boolean _isChunkedPost = true;
   private boolean _isDebug = false;
+  private boolean _isCompressed = false;
 
   private long _readTimeout = -1;
   private long _connectTimeout = -1;
@@ -259,6 +260,19 @@ public class HessianProxyFactory implements ServiceProxyFactory, ObjectFactory {
   public boolean isChunkedPost()
   {
     return _isChunkedPost;
+  }
+
+  /**
+   * Set true if the proxy should send compressed requests.
+   */
+  public void setCompressed(boolean compressed)
+  {
+    _isCompressed = compressed;
+  }
+
+  public boolean isCompressed()
+  {
+    return _isCompressed;
   }
 
   /**
