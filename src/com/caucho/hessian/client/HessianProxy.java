@@ -277,6 +277,11 @@ public class HessianProxy implements InvocationHandler, Serializable {
 
       try {
         os = conn.getOutputStream();
+        if (_factory.isCompressed())
+        {
+          Deflater deflater = new Deflater(Deflater.DEFAULT_COMPRESSION, true);
+          os = new DeflaterOutputStream(os, deflater);
+        }
       } catch (Exception e) {
         throw new HessianRuntimeException(e);
       }
@@ -292,6 +297,11 @@ public class HessianProxy implements InvocationHandler, Serializable {
 
       out.call(methodName, args);
       out.flush();
+
+      if (os instanceof DeflaterOutputStream)
+      {
+          ((DeflaterOutputStream) os).finish();
+      }
 
       conn.sendRequest();
 
@@ -312,6 +322,10 @@ public class HessianProxy implements InvocationHandler, Serializable {
   {
     conn.addHeader("Content-Type", "x-application/hessian");
     conn.addHeader("Accept-Encoding", "deflate");
+    if (_factory.isCompressed())
+    {
+      conn.addHeader("Content-Encoding", "deflate");
+    }
 
     String basicAuth = _factory.getBasicAuth();
 
