@@ -71,8 +71,6 @@ public class IteratorDeserializer extends AbstractListDeserializer {
   {
     ArrayList list = new ArrayList();
 
-    in.addRef(list);
-
     while (! in.isEnd())
       list.add(in.readObject());
 
